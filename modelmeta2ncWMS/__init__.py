@@ -14,10 +14,15 @@ def create_app(test_config=None):
     app.config.from_mapping(
         SQLALCHEMY_DATABASE_URI=os.getenv(
             "PCDS_DSN",
-            "postgresql://ce_meta_ro@monsoon.pcic.uvic.ca/ce_meta_12f290b63791"
+            "postgresql://ce_meta_ro@db3.pcic.uvic.ca/ce_meta_12f290b63791"
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SQLALCHEMY_ECHO=False,
+        SQLALCHEMY_ENGINE_OPTIONS=dict(
+            echo_pool="debug",
+            pool_size=20,
+            pool_recycle=3600,
+        )
     )
     # if test_config is None:
     #     # load the instance config, if it exists, when not testing
