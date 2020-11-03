@@ -1,4 +1,5 @@
 import os
+import sys
 
 from flask import Flask, request, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -33,6 +34,12 @@ def create_app(test_config=None):
     #     app.config.from_mapping(test_config)
 
     db = SQLAlchemy(app)
+    translations = get_all_translations(db.session)
+    print(
+        f"Loaded translations. "
+        f"{len(translations)} items. "
+        f"{sys.getsizeof(translations)} bytes"
+    )
 
     ncwms_url = os.getenv(
         "NCWMS_URL",
@@ -57,12 +64,12 @@ def create_app(test_config=None):
         # Translate args containing layer identifiers
         layer_id_keys = {key for key in args if key.lower() in all_layer_id_keys}
         for key in layer_id_keys:
-            args[key] = translate_layer_ids(db.session, args[key], prefix)
+            args[key] = translate_layer_ids(translations, args[key], prefix)
 
         # Translate args containing pure dataset identifiers
         dataset_id_keys = {key for key in args if key.lower() in all_dataset_id_keys}
         for key in dataset_id_keys:
-            args[key] = translate_dataset_ids(db.session, args[key], prefix)
+            args[key] = translate_dataset_ids(translations, args[key], prefix)
 
         # print(f"Outgoing args: {args}")
 
@@ -135,9 +142,9 @@ def create_app(test_config=None):
             headers=ncwms_response.headers.items(),
         )
 
-    @app.errorhandler(NoResultFound)
+    @app.errorhandler(KeyError)
     def handle_no_translation(e):
-        return e._message(), 404
+        return e.args[0], 404
 
     @app.errorhandler(MultipleResultsFound)
     def handle_multi_translation(e):
@@ -146,41 +153,42 @@ def create_app(test_config=None):
     return app
 
 
+def get_all_translations(session):
+    results = (
+        session.query(
+            DataFile.unique_id.label("unique_id"),
+            DataFile.filename.label("filepath"),
+        ).all()
+    )
+    return {r.unique_id: r.filepath for r in results}
+
+
 id_separator = ','
 
 
-def translate_dataset_ids(session, dataset_ids, prefix):
+def translate_dataset_ids(translations, dataset_ids, prefix):
     return id_separator.join(
-        translate_dataset_id(session, dataset_id, prefix)
+        translate_dataset_id(translations, dataset_id, prefix)
         for dataset_id in dataset_ids.split(id_separator)
     )
 
 
-def translate_layer_ids(session, layer_ids, prefix):
+def translate_layer_ids(translations, layer_ids, prefix):
     return id_separator.join(
-        translate_layer_id(session, layer_id, prefix)
+        translate_layer_id(translations, layer_id, prefix)
         for layer_id in layer_ids.split(id_separator)
     )
 
 
-def translate_dataset_id(session, dataset_id, prefix):
+def translate_dataset_id(translations, dataset_id, prefix):
     """
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
     dynamic dataset identifier with the specified prefix.
     """
     try:
-        filepath = (
-            session.query(DataFile.filename)
-                .filter(DataFile.unique_id == dataset_id)
-                .scalar()
-        )
-    except MultipleResultsFound:
-        raise MultipleResultsFound(
-            f"Dataset id '{dataset_id}' has multiple matches in metadata database."
-            f"This is an internal error and should be reported to PCIC staff."
-        )
-    if filepath is None:
-        raise NoResultFound(
+        filepath = translations[dataset_id]
+    except KeyError:
+        raise KeyError(
             f"Dataset id '{dataset_id}' not found in metadata database."
         )
     return f"{prefix}{filepath}"
