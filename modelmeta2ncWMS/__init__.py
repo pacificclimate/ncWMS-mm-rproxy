@@ -32,9 +32,14 @@ def create_app(test_config=None):
     #     # load the test config if passed in
     #     app.config.from_mapping(test_config)
 
-    # TODO: make key lists part of configuration
-    all_layer_id_keys = {"layers", "layer", "layername", "query_layers"}
-    all_dataset_id_keys = {"dataset"}
+    all_layer_id_keys = set(
+        os.getenv("NCWMS_LAYER_PARAM_NAMES", "layers,layer,layername,query_layers")
+            .split(',')
+    )
+    all_dataset_id_keys = set(
+        os.getenv("NCWMS_DATASET_PARAM_NAMES", "dataset")
+            .split(',')
+    )
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
