@@ -3,6 +3,7 @@ import os
 from flask import Flask, request, Response
 from flask_sqlalchemy import SQLAlchemy
 import requests
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from modelmeta import DataFile
 
@@ -129,6 +130,14 @@ def create_app(test_config=None):
             headers=ncwms_response.headers.items(),
         )
 
+    @app.errorhandler(NoResultFound)
+    def handle_no_translation(e):
+        return e._message(), 404
+
+    @app.errorhandler(MultipleResultsFound)
+    def handle_multi_translation(e):
+        return e._message(), 500
+
     return app
 
 
@@ -154,11 +163,21 @@ def translate_dataset_id(session, dataset_id, prefix):
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
     dynamic dataset identifier with the specified prefix.
     """
-    filepath = (
-        session.query(DataFile.filename)
-            .filter(DataFile.unique_id == dataset_id)
-            .scalar()
-    )
+    try:
+        filepath = (
+            session.query(DataFile.filename)
+                .filter(DataFile.unique_id == dataset_id)
+                .scalar()
+        )
+    except MultipleResultsFound:
+        raise MultipleResultsFound(
+            f"Dataset id '{dataset_id}' has multiple matches in metadata database."
+            f"This is an internal error and should be reported to PCIC staff."
+        )
+    if filepath is None:
+        raise NoResultFound(
+            f"Dataset id '{dataset_id}' not found in metadata database."
+        )
     return f"{prefix}{filepath}"
 
 
