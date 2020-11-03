@@ -34,8 +34,8 @@ def create_app(test_config=None):
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
-        print(f"Incoming args: {request.args}")
-        print(f"Incoming headers: {request.headers}")
+        # print(f"Incoming args: {request.args}")
+        # print(f"Incoming headers: {request.headers}")
         args = request.args.copy()
         # Translate args containing dataset ids
         # TODO: make key lists part of configuration
@@ -50,7 +50,7 @@ def create_app(test_config=None):
             if key in args:
                 args[key] = translate_dataset_id(db.session, args[key], prefix)
 
-        print(f"Outgoing args: {args}")
+        # print(f"Outgoing args: {args}")
 
         # Forward the request to ncWMS
         #
@@ -70,17 +70,15 @@ def create_app(test_config=None):
         #
         # - stream: if False, the response content will be immediately downloaded;
         #   if true, the raw response.
-        print("sending ncWMS request")
+        # print("sending ncWMS request")
         ncwms_response = requests.get(
             ncwms_url,
             params=args,
-            # Conversion of headers necessary here? Accepts a simple dict.
-            # Apparent answer: no.
             headers=request.headers,
-            # stream=True,
+            stream=True,
         )
-        print(f"ncWMS url: {ncwms_response.url}")
-        print(f"received ncWMS response: {ncwms_response.status_code}")
+        # print(f"ncWMS url: {ncwms_response.url}")
+        # print(f"received ncWMS response: {ncwms_response.status_code}")
 
         # Return the ncWMS response to the client
         #
@@ -118,8 +116,7 @@ def create_app(test_config=None):
         #   Headers: An object that stores some headers. It has a dict-like interface
         #   but is ordered and can store the same keys multiple times.
         return Response(
-            response=ncwms_response.content,
-            # response=ncwms_response.raw,  # ??
+            response=ncwms_response.raw,
             status=str(ncwms_response.status_code),
             headers=ncwms_response.headers.items(),
         )
