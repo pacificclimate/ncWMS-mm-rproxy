@@ -32,23 +32,25 @@ def create_app(test_config=None):
     #     # load the test config if passed in
     #     app.config.from_mapping(test_config)
 
+    # TODO: make key lists part of configuration
+    all_layer_id_keys = {"layers", "layer", "layername", "query_layers"}
+    all_dataset_id_keys = {"dataset"}
+
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
         # print(f"Incoming args: {request.args}")
         # print(f"Incoming headers: {request.headers}")
         args = request.args.copy()
-        # Translate args containing dataset ids
-        # TODO: make key lists part of configuration
 
-        # 1. args containing layer identifiers
-        for key in {"LAYERS", "layers", "LAYER", "LAYERNAME", "QUERY_LAYERS"}:
-            if key in args:
-                args[key] = translate_layer_ids(db.session, args[key], prefix)
+        # Translate args containing layer identifiers
+        layer_id_keys = {key for key in args if key.lower() in all_layer_id_keys}
+        for key in layer_id_keys:
+            args[key] = translate_layer_ids(db.session, args[key], prefix)
 
-        # 2. args containing pure dataset identifiers
-        for key in {"DATASET"}:
-            if key in args:
-                args[key] = translate_dataset_id(db.session, args[key], prefix)
+        # Translate args containing pure dataset identifiers
+        dataset_id_keys = {key for key in args if key.lower() in all_dataset_id_keys}
+        for key in dataset_id_keys:
+            args[key] = translate_dataset_id(db.session, args[key], prefix)
 
         # print(f"Outgoing args: {args}")
 
