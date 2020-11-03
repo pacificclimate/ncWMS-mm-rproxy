@@ -18,12 +18,6 @@ def create_app(test_config=None):
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SQLALCHEMY_ECHO=False,
     )
-    db = SQLAlchemy(app)
-    ncwms_url = os.getenv(
-        "NCWMS_URL",
-        "https://services.pacificclimate.org/dev/ncwms"
-    )
-
     # if test_config is None:
     #     # load the instance config, if it exists, when not testing
     #     # TODO: Should the file name be specified by an env var?
@@ -31,6 +25,13 @@ def create_app(test_config=None):
     # else:
     #     # load the test config if passed in
     #     app.config.from_mapping(test_config)
+
+    db = SQLAlchemy(app)
+
+    ncwms_url = os.getenv(
+        "NCWMS_URL",
+        "https://services.pacificclimate.org/dev/ncwms"
+    )
 
     all_layer_id_keys = set(
         os.getenv("NCWMS_LAYER_PARAM_NAMES", "layers,layer,layername,query_layers")
@@ -55,7 +56,7 @@ def create_app(test_config=None):
         # Translate args containing pure dataset identifiers
         dataset_id_keys = {key for key in args if key.lower() in all_dataset_id_keys}
         for key in dataset_id_keys:
-            args[key] = translate_dataset_id(db.session, args[key], prefix)
+            args[key] = translate_dataset_ids(db.session, args[key], prefix)
 
         # print(f"Outgoing args: {args}")
 
@@ -131,6 +132,23 @@ def create_app(test_config=None):
     return app
 
 
+id_separator = ','
+
+
+def translate_dataset_ids(session, dataset_ids, prefix):
+    return id_separator.join(
+        translate_dataset_id(session, dataset_id, prefix)
+        for dataset_id in dataset_ids.split(id_separator)
+    )
+
+
+def translate_layer_ids(session, layer_ids, prefix):
+    return id_separator.join(
+        translate_layer_id(session, layer_id, prefix)
+        for layer_id in layer_ids.split(id_separator)
+    )
+
+
 def translate_dataset_id(session, dataset_id, prefix):
     """
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
@@ -144,7 +162,7 @@ def translate_dataset_id(session, dataset_id, prefix):
     return f"{prefix}{filepath}"
 
 
-def translate_layer_ids(session, layer_id, prefix):
+def translate_layer_id(session, layer_id, prefix):
     """
     Translate a layer identifier containing a dataset identifier that is a modelmeta
     unique_id to an equivalent dynamic layer identifier with the specified prefix.
