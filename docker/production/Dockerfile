@@ -24,4 +24,4 @@ RUN groupadd -g 999 user \
     && useradd -r -u 999 -g user user
 USER user
 
-ENTRYPOINT ["gunicorn", "-b", ":8000", "ncwms_mm_rproxy.wsgi:app"]
+ENTRYPOINT ["gunicorn", "-c", "./docker/production/gunicorn.config.py", "ncwms_mm_rproxy.wsgi:app"]
