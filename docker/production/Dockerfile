@@ -20,4 +20,8 @@ RUN pip3 install .
 
 EXPOSE 8000
 
+RUN groupadd -g 999 user \
+    && useradd -r -u 999 -g user user
+USER user
+
 ENTRYPOINT ["gunicorn", "-b", ":8000", "ncwms_mm_rproxy.wsgi:app"]
