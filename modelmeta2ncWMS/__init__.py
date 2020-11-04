@@ -2,6 +2,7 @@ import os
 import sys
 
 from flask import Flask, request, Response
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import requests
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
@@ -12,6 +13,7 @@ from modelmeta import DataFile
 def create_app(test_config=None):
     # app = Flask(__name__, instance_relative_config=True)
     app = Flask(__name__)
+    CORS(app)
     app.config.from_mapping(
         SQLALCHEMY_DATABASE_URI=os.getenv(
             "PCDS_DSN",
