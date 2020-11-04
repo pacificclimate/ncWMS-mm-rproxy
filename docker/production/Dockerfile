@@ -11,7 +11,7 @@ RUN apt-get update && \
         python3-pip \
         postgresql-client
 
-ADD .. /app
+ADD . /app
 WORKDIR /app
 
 RUN pip3 install -i https://pypi.pacificclimate.org/simple/ -r requirements.txt
