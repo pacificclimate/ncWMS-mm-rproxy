@@ -20,4 +20,4 @@ RUN pip3 install .
 
 EXPOSE 8000
 
-ENTRYPOINT ["gunicorn", "-b", ":8000", "modelmeta2ncWMS.wsgi:app"]
+ENTRYPOINT ["gunicorn", "-b", ":8000", "ncwms_mm_rproxy.wsgi:app"]

@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 __version__ = (0, 1, 0)
 
 setup(
-    name="modelmeta2ncWMS",
+    name="ncwms_mm_rproxy",
     description="PCIC reverse proxy for ncWMS via modelmeta",
     keywords="sql database climate",
     packages=find_packages(),

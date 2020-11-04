@@ -21,5 +21,5 @@ jobs:
           username: ${{ secrets.pcicdevops_at_dockerhub_username }}
           password: ${{ secrets.pcicdevops_at_dockerhub_password }}
           dockerfile: ./docker/production/Dockerfile
-          repository: pcic/modelmeta2ncwms
+          repository: pcic/ncwms-mm-rproxy
           tag_with_ref: true

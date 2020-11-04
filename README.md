@@ -7,7 +7,7 @@ using a `modelmeta` database.
 ## Run dev
 
 ```
-export FLASK_APP=modelmeta2ncWMS.wsgi:app
+export FLASK_APP=ncwms_mm_rproxy
 export FLASK_ENV=development
 flask run
 ```
