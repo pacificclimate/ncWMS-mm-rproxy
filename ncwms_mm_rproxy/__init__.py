@@ -93,15 +93,16 @@ def create_app(test_config=None):
         #
         # - stream: if False, the response content will be immediately downloaded;
         #   if true, the raw response.
-        # print("sending ncWMS request")
+        print("sending ncWMS request")
         ncwms_response = requests.get(
             ncwms_url,
             params=args,
             headers=request.headers,
             stream=True,
         )
-        # print(f"ncWMS url: {ncwms_response.url}")
-        # print(f"received ncWMS response: {ncwms_response.status_code}")
+        print(f"requested ncWMS url: {ncwms_response.url}")
+        print(f"received ncWMS response status: {ncwms_response.status_code}")
+        print(f"received ncWMS response headers: {ncwms_response.headers}")
 
         # Return the ncWMS response to the client
         #
