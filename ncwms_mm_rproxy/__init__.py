@@ -1,5 +1,6 @@
 import os
 import sys
+import logging.config
 
 from flask import Flask, request, Response
 from flask_cors import CORS
@@ -11,6 +12,27 @@ from modelmeta import DataFile
 
 
 def create_app(test_config=None):
+    """Create an instance of our app."""
+
+    # Configure Flask logging
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {'default': {
+            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+        }},
+        'handlers': {'wsgi': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://flask.logging.wsgi_errors_stream',
+            'formatter': 'default'
+        }},
+        'root': {
+            'level': os.getenv("FLASK_LOGLEVEL", "INFO"),
+            'handlers': ['wsgi']
+        }
+    })
+
+    # Create and configure the Flask app
+
     # app = Flask(__name__, instance_relative_config=True)
     app = Flask(__name__)
     CORS(app)
@@ -37,7 +59,7 @@ def create_app(test_config=None):
 
     db = SQLAlchemy(app)
     translations = get_all_translations(db.session)
-    print(
+    app.logger.info(
         f"Loaded translations. "
         f"{len(translations)} items. "
         f"{sys.getsizeof(translations)} bytes"
@@ -59,8 +81,8 @@ def create_app(test_config=None):
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
-        # print(f"Incoming args: {request.args}")
-        # print(f"Incoming headers: {request.headers}")
+        # app.logger.debug(f"Incoming args: {request.args}")
+        # app.logger.debug(f"Incoming headers: {request.headers}")
         args = request.args.copy()
 
         # Translate args containing layer identifiers
@@ -73,7 +95,7 @@ def create_app(test_config=None):
         for key in dataset_id_keys:
             args[key] = translate_dataset_ids(translations, args[key], prefix)
 
-        # print(f"Outgoing args: {args}")
+        # app.logger.debug(f"Outgoing args: {args}")
 
         # Forward the request to ncWMS
         #
@@ -93,16 +115,17 @@ def create_app(test_config=None):
         #
         # - stream: if False, the response content will be immediately downloaded;
         #   if true, the raw response.
-        print("sending ncWMS request")
+        app.logger.debug("sending ncWMS request")
         ncwms_response = requests.get(
             ncwms_url,
             params=args,
             headers=request.headers,
             stream=True,
         )
-        print(f"requested ncWMS url: {ncwms_response.url}")
-        print(f"received ncWMS response status: {ncwms_response.status_code}")
-        print(f"received ncWMS response headers: {ncwms_response.headers}")
+        app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
+        app.logger.debug(f"ncWMS headers: {ncwms_response.headers}")
+        app.logger.debug(f"received ncWMS response status: {ncwms_response.status_code}")
+        app.logger.debug(f"received ncWMS response headers: {ncwms_response.headers}")
 
         # Return the ncWMS response to the client
         #
