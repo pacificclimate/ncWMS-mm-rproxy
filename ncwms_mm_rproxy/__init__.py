@@ -33,29 +33,27 @@ def create_app(test_config=None):
 
     # Create and configure the Flask app
 
-    # app = Flask(__name__, instance_relative_config=True)
     app = Flask(__name__)
     CORS(app)
-    app.config.from_mapping(
-        SQLALCHEMY_DATABASE_URI=os.getenv(
-            "MM_DSN",
-            "postgresql://ce_meta_ro@db3.pcic.uvic.ca/ce_meta_12f290b63791"
-        ),
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        SQLALCHEMY_ECHO=False,
-        SQLALCHEMY_ENGINE_OPTIONS=dict(
-            echo_pool="debug",
-            pool_size=20,
-            pool_recycle=3600,
-        )
-    )
-    # if test_config is None:
-    #     # load the instance config, if it exists, when not testing
-    #     # TODO: Should the file name be specified by an env var?
-    #     app.config.from_pyfile("config.py", silent=True)
-    # else:
-    #     # load the test config if passed in
-    #     app.config.from_mapping(test_config)
+    if test_config is None:
+        # load the config, if it exists, when not testing
+        try:
+            app.config.from_pyfile("flask.config.py", silent=False)
+        except Exception as e:
+            app.logger.error("Configuration failure", e)
+            raise e
+    else:
+        # load the test config if passed in
+        app.config.from_mapping(test_config)
+
+    ncwms_url = app.config["NCWMS_URL"]
+
+    def lower_all(iterable):
+        return set(map(lambda name: name.lower(), iterable))
+
+    ncwms_layer_param_names = lower_all(app.config["NCWMS_LAYER_PARAM_NAMES"])
+    ncwms_dataset_param_names = \
+        lower_all(app.config["NCWMS_DATASET_PARAM_NAMES"])
 
     db = SQLAlchemy(app)
     translations = get_all_translations(db.session)
@@ -65,35 +63,28 @@ def create_app(test_config=None):
         f"{sys.getsizeof(translations)} bytes"
     )
 
-    ncwms_url = os.getenv(
-        "NCWMS_URL",
-        "https://services.pacificclimate.org/dev/ncwms"
-    )
-
-    all_layer_id_keys = set(
-        os.getenv("NCWMS_LAYER_PARAM_NAMES", "layers,layer,layername,query_layers")
-            .split(',')
-    )
-    all_dataset_id_keys = set(
-        os.getenv("NCWMS_DATASET_PARAM_NAMES", "dataset")
-            .split(',')
-    )
-
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
+        nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
         args = request.args.copy()
 
         # Translate args containing layer identifiers
-        layer_id_keys = {key for key in args if key.lower() in all_layer_id_keys}
-        for key in layer_id_keys:
-            args[key] = translate_layer_ids(translations, args[key], prefix)
+        layer_id_names = {
+            name for name in args
+            if name.lower() in ncwms_layer_param_names
+        }
+        for name in layer_id_names:
+            args[name] = translate_layer_ids(translations, args[name], prefix)
 
         # Translate args containing pure dataset identifiers
-        dataset_id_keys = {key for key in args if key.lower() in all_dataset_id_keys}
-        for key in dataset_id_keys:
-            args[key] = translate_dataset_ids(translations, args[key], prefix)
+        dataset_id_names = {
+            name for name in args
+            if name.lower() in ncwms_dataset_param_names
+        }
+        for name in dataset_id_names:
+            args[name] = translate_dataset_ids(translations, args[name], prefix)
 
         # app.logger.debug(f"Outgoing args: {args}")
 
@@ -124,8 +115,12 @@ def create_app(test_config=None):
         )
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
         app.logger.debug(f"ncWMS headers: {ncwms_response.headers}")
-        app.logger.debug(f"received ncWMS response status: {ncwms_response.status_code}")
-        app.logger.debug(f"received ncWMS response headers: {ncwms_response.headers}")
+        app.logger.debug(
+            f"received ncWMS response status: {ncwms_response.status_code}"
+        )
+        app.logger.debug(
+            f"received ncWMS response headers: {ncwms_response.headers}"
+        )
 
         # Return the ncWMS response to the client
         #
@@ -135,9 +130,9 @@ def create_app(test_config=None):
         #   e.g. 404 or 200.
         #
         # - response.content: the whole response, as bytes.
-        #   The gzip and deflate transfer-encodings are automatically decoded for you.
-        #   This is undesirable as we don't need or want to decode such encodings.
-        #   I think raw response is more like what we want.
+        #   The gzip and deflate transfer-encodings are automatically decoded
+        #   for you. This is undesirable as we don't need or want to decode such
+        #   encodings. I think raw response is more like what we want.
         #
         # - response.raw: the response as an urllib3.response.HTTPRespoinse object
         #   In the rare case that you’d like to get the raw socket response from the
