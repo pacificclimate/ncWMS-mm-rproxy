@@ -16,7 +16,7 @@ def create_app(test_config=None):
     CORS(app)
     app.config.from_mapping(
         SQLALCHEMY_DATABASE_URI=os.getenv(
-            "PCDS_DSN",
+            "MM_DSN",
             "postgresql://ce_meta_ro@db3.pcic.uvic.ca/ce_meta_12f290b63791"
         ),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
