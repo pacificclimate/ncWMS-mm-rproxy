@@ -46,12 +46,14 @@ def create_app(test_config=None):
         # load the test config if passed in
         app.config.from_mapping(test_config)
 
-    ncwms_layer_param_names = {
-        key.lower() for key in app.config["NCWMS_LAYER_PARAM_NAMES"]
-    }
-    ncwms_dataset_param_names = {
-        key.lower() for key in app.config["NCWMS_DATASET_PARAM_NAMES"]
-    }
+    ncwms_url = app.config["NCWMS_URL"]
+
+    def lower_all(iterable):
+        return set(map(lambda name: name.lower(), iterable))
+
+    ncwms_layer_param_names = lower_all(app.config["NCWMS_LAYER_PARAM_NAMES"])
+    ncwms_dataset_param_names = \
+        lower_all(app.config["NCWMS_DATASET_PARAM_NAMES"])
 
     db = SQLAlchemy(app)
     translations = get_all_translations(db.session)
@@ -63,25 +65,26 @@ def create_app(test_config=None):
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
+        nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
         args = request.args.copy()
 
         # Translate args containing layer identifiers
-        layer_id_keys = {
-            key for key in args
-            if key.lower() in ncwms_layer_param_names
+        layer_id_names = {
+            name for name in args
+            if name.lower() in ncwms_layer_param_names
         }
-        for key in layer_id_keys:
-            args[key] = translate_layer_ids(translations, args[key], prefix)
+        for name in layer_id_names:
+            args[name] = translate_layer_ids(translations, args[name], prefix)
 
         # Translate args containing pure dataset identifiers
-        dataset_id_keys = {
-            key for key in args
-            if key.lower() in ncwms_dataset_param_names
+        dataset_id_names = {
+            name for name in args
+            if name.lower() in ncwms_dataset_param_names
         }
-        for key in dataset_id_keys:
-            args[key] = translate_dataset_ids(translations, args[key], prefix)
+        for name in dataset_id_names:
+            args[name] = translate_dataset_ids(translations, args[name], prefix)
 
         # app.logger.debug(f"Outgoing args: {args}")
 
@@ -105,7 +108,7 @@ def create_app(test_config=None):
         #   if true, the raw response.
         app.logger.debug("sending ncWMS request")
         ncwms_response = requests.get(
-            app.config["NCWMS_URL"],
+            ncwms_url,
             params=args,
             headers=request.headers,
             stream=True,
