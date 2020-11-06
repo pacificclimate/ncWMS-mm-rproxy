@@ -34,3 +34,6 @@ NCWMS_URL = os.getenv(
 )
 NCWMS_LAYER_PARAM_NAMES = {"layers", "layer", "layername", "query_layers"}
 NCWMS_DATASET_PARAM_NAMES = {"dataset"}
+
+EXCLUDED_REQUEST_HEADERS = {"host", "x-forwarded-for"}
+EXCLUDED_RESPONSE_HEADERS = {}
