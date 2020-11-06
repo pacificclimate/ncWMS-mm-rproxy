@@ -10,6 +10,8 @@ from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 from modelmeta import DataFile
 
+from ncwms_mm_rproxy.cache import ModelmetaDatasetIdTranslationCache
+
 
 def create_app(test_config=None):
     """Create an instance of our app."""
@@ -65,12 +67,7 @@ def create_app(test_config=None):
     excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
 
     db = SQLAlchemy(app)
-    translations = get_all_translations(db.session)
-    app.logger.info(
-        f"Loaded translations. "
-        f"{len(translations)} items. "
-        f"{sys.getsizeof(translations)} bytes"
-    )
+    translations = ModelmetaDatasetIdTranslationCache(db.session)
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
@@ -198,16 +195,6 @@ def create_app(test_config=None):
     return app
 
 
-def get_all_translations(session):
-    results = (
-        session.query(
-            DataFile.unique_id.label("unique_id"),
-            DataFile.filename.label("filepath"),
-        ).all()
-    )
-    return {r.unique_id: r.filepath for r in results}
-
-
 id_separator = ','
 
 
@@ -230,12 +217,7 @@ def translate_dataset_id(translations, dataset_id, prefix):
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
     dynamic dataset identifier with the specified prefix.
     """
-    try:
-        filepath = translations[dataset_id]
-    except KeyError:
-        raise KeyError(
-            f"Dataset id '{dataset_id}' not found in metadata database."
-        )
+    filepath = translations.get(dataset_id)
     return f"{prefix}{filepath}"
 
 

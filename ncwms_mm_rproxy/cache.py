@@ -66,11 +66,11 @@ class ModelmetaDatasetIdTranslationCache(CacheBase):
         # If this freshly retrieved filepath is not valid, we're in trouble.
         # This check is not strictly necessary, as the downstream user of this
         # value will also check it.
-        if not self.is_valid_value(filepath):
-            raise ValueError(
-                f"Filepath '{filepath}' corresponding to '{key}' "
-                f"does not exist."
-            )
+        # if not self.is_valid_value(filepath):
+        #     raise ValueError(
+        #         f"Filepath '{filepath}' corresponding to '{key}' "
+        #         f"does not exist."
+        #     )
         return filepath
 
     def is_valid_value(self, value):
