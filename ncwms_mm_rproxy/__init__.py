@@ -74,29 +74,20 @@ def create_app(test_config=None):
         nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
+
+        # Translate params containing dataset identifiers
         ncwms_request_params = request.args.copy()
+        for name in ncwms_request_params:
+            if name.lower() in ncwms_layer_param_names:
+                ncwms_request_params[name] = translate_layer_ids(
+                    translations, ncwms_request_params[name], prefix
+                )
+            if name.lower() in ncwms_dataset_param_names:
+                ncwms_request_params[name] = translate_dataset_ids(
+                    translations, ncwms_request_params[name], prefix
+                )
 
-        # TODO: Tighten this stupid stuff up
-        # Translate args containing layer identifiers
-        layer_id_names = {
-            name for name in ncwms_request_params
-            if name.lower() in ncwms_layer_param_names
-        }
-        for name in layer_id_names:
-            ncwms_request_params[name] = translate_layer_ids(
-                translations, ncwms_request_params[name], prefix
-            )
-
-        # Translate args containing pure dataset identifiers
-        dataset_id_names = {
-            name for name in ncwms_request_params
-            if name.lower() in ncwms_dataset_param_names
-        }
-        for name in dataset_id_names:
-            ncwms_request_params[name] = translate_dataset_ids(
-                translations, ncwms_request_params[name], prefix
-            )
-
+        # Filter request headers, and update X-Forwarded-For
         ncwms_request_headers = {
             name: value for name, value in request.headers.items()
             if name.lower() not in excluded_request_headers
