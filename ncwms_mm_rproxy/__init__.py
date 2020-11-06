@@ -148,7 +148,12 @@ def create_app(test_config=None):
         )
 
         # Return the ncWMS response to the client
-        #
+
+        response_headers = {
+            name: value for name, value in ncwms_response.headers.items()
+            if name.lower() not in excluded_response_headers
+        }
+
         # Notes on requests.get response attributes (ncwms_response):
         #
         # - response.status_code: Integer Code of responded HTTP Status,
