@@ -114,12 +114,12 @@ def create_app(test_config=None):
             stream=True,
         )
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
-        app.logger.debug(f"ncWMS headers: {ncwms_response.headers}")
+        app.logger.debug(f"ncWMS request headers: {request.headers}")
         app.logger.debug(
-            f"received ncWMS response status: {ncwms_response.status_code}"
+            f"ncWMS response status: {ncwms_response.status_code}"
         )
         app.logger.debug(
-            f"received ncWMS response headers: {ncwms_response.headers}"
+            f"ncWMS response headers: {ncwms_response.headers}"
         )
 
         # Return the ncWMS response to the client
