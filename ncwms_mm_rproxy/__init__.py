@@ -49,17 +49,20 @@ def create_app(test_config=None):
     ncwms_url = app.config["NCWMS_URL"]
 
     def lower_all(iterable):
-        return set(map(lambda name: name.lower(), iterable))
+        return map(lambda name: name.lower(), iterable)
 
-    ncwms_layer_param_names = lower_all(app.config["NCWMS_LAYER_PARAM_NAMES"])
-    ncwms_dataset_param_names = \
-        lower_all(app.config["NCWMS_DATASET_PARAM_NAMES"])
+    def config(key, type_=set, default=None, process=lower_all):
+        if default is None:
+            default = set()
+        return type_(process(app.config.get(key, default)))
+
+    ncwms_layer_param_names = config("NCWMS_LAYER_PARAM_NAMES")
+    ncwms_dataset_param_names = config("NCWMS_DATASET_PARAM_NAMES")
 
     excluded_request_headers = (
-        lower_all(app.config["EXCLUDED_REQUEST_HEADERS"]) | {"x-forwarded-for"}
+        config("EXCLUDED_REQUEST_HEADERS") | {"x-forwarded-for"}
     )
-    excluded_response_headers = \
-        lower_all(app.config["EXCLUDED_RESPONSE_HEADERS"])
+    excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
 
     db = SQLAlchemy(app)
     translations = get_all_translations(db.session)
