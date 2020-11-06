@@ -55,6 +55,12 @@ def create_app(test_config=None):
     ncwms_dataset_param_names = \
         lower_all(app.config["NCWMS_DATASET_PARAM_NAMES"])
 
+    excluded_request_headers = (
+        lower_all(app.config["EXCLUDED_REQUEST_HEADERS"]) | {"x-forwarded-for"}
+    )
+    excluded_response_headers = \
+        lower_all(app.config["EXCLUDED_RESPONSE_HEADERS"])
+
     db = SQLAlchemy(app)
     translations = get_all_translations(db.session)
     app.logger.info(
@@ -68,23 +74,42 @@ def create_app(test_config=None):
         nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
-        args = request.args.copy()
+        ncwms_request_params = request.args.copy()
 
+        # TODO: Tighten this stupid stuff up
         # Translate args containing layer identifiers
         layer_id_names = {
-            name for name in args
+            name for name in ncwms_request_params
             if name.lower() in ncwms_layer_param_names
         }
         for name in layer_id_names:
-            args[name] = translate_layer_ids(translations, args[name], prefix)
+            ncwms_request_params[name] = translate_layer_ids(
+                translations, ncwms_request_params[name], prefix
+            )
 
         # Translate args containing pure dataset identifiers
         dataset_id_names = {
-            name for name in args
+            name for name in ncwms_request_params
             if name.lower() in ncwms_dataset_param_names
         }
         for name in dataset_id_names:
-            args[name] = translate_dataset_ids(translations, args[name], prefix)
+            ncwms_request_params[name] = translate_dataset_ids(
+                translations, ncwms_request_params[name], prefix
+            )
+
+        ncwms_request_headers = {
+            name: value for name, value in request.headers.items()
+            if name.lower() not in excluded_request_headers
+        }
+        xfw_separator = ', '
+        try:
+            x_forwarded_for = \
+                request.headers["X-Forwarded-For"].split(xfw_separator)
+        except KeyError:
+            x_forwarded_for = []
+        ncwms_request_headers["X-Forwarded-For"] = xfw_separator.join(
+            x_forwarded_for + [request.environ['REMOTE_ADDR']]
+        )
 
         # app.logger.debug(f"Outgoing args: {args}")
 
@@ -109,12 +134,12 @@ def create_app(test_config=None):
         app.logger.debug("sending ncWMS request")
         ncwms_response = requests.get(
             ncwms_url,
-            params=args,
-            headers=request.headers,
+            params=ncwms_request_params,
+            headers=ncwms_request_headers,
             stream=True,
         )
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
-        app.logger.debug(f"ncWMS request headers: {request.headers}")
+        app.logger.debug(f"ncWMS request headers: {ncwms_request_headers}")
         app.logger.debug(
             f"ncWMS response status: {ncwms_response.status_code}"
         )
@@ -160,7 +185,7 @@ def create_app(test_config=None):
         return Response(
             response=ncwms_response.raw,
             status=str(ncwms_response.status_code),
-            headers=ncwms_response.headers.items(),
+            headers=response_headers,
         )
 
     @app.errorhandler(KeyError)
