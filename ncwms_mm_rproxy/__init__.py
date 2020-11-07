@@ -1,16 +1,12 @@
 import os
-import sys
 import logging.config
 
 from flask import Flask, request, Response
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import requests
-from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
-from modelmeta import DataFile
-
-from ncwms_mm_rproxy.cache import ModelmetaDatasetIdTranslationCache
+from ncwms_mm_rproxy.cache import TranslationCache
 
 
 def create_app(test_config=None):
@@ -67,7 +63,10 @@ def create_app(test_config=None):
     excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
 
     db = SQLAlchemy(app)
-    translations = ModelmetaDatasetIdTranslationCache(db.session)
+    translations = TranslationCache(
+        db.session, maxsize=app.config.get("CACHE_MAXSIZE", 10000)
+    )
+    translations.preload()
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
@@ -184,13 +183,9 @@ def create_app(test_config=None):
             headers=response_headers,
         )
 
-    @app.errorhandler(KeyError)
+    @app.errorhandler(ValueError)
     def handle_no_translation(e):
         return e.args[0], 404
-
-    @app.errorhandler(MultipleResultsFound)
-    def handle_multi_translation(e):
-        return e._message(), 500
 
     return app
 
@@ -217,7 +212,7 @@ def translate_dataset_id(translations, dataset_id, prefix):
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
     dynamic dataset identifier with the specified prefix.
     """
-    filepath = translations.get(dataset_id)
+    filepath = translations[dataset_id]
     return f"{prefix}{filepath}"
 
 

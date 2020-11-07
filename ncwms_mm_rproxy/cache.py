@@ -1,52 +1,36 @@
-from abc import ABC, abstractmethod
-import os
 from modelmeta import DataFile
-from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.orm.exc import MultipleResultsFound
+from cachetools import LFUCache
 
 
-class CacheBase(ABC):
+class TranslationCache(LFUCache):
     """
-    Abstract base class for a special kind of cache, where a cache miss is
-    either
-    - key not in cache
-    - key in cache; associated value is invalid (e.g., out of date)
-    """
+    A cache for the translations retrieved from modelmeta.
+    Cache key is modelmeta unique_id.
+    Cached value is corresponding modelmeta filepath.
 
-    def __init__(self):
-        self.cache = {}
+    By defining method `__missing__`, we automagically retrieve any missing
+    translation and put it into the cache.
 
-    @abstractmethod
-    def load_value(self, key):
-        pass
-
-    @abstractmethod
-    def is_valid_value(self, value):
-        pass
-
-    def get(self, key):
-        # TODO: It may be worth writing some more efficient code here
-        if not (key in self.cache and self.is_valid_value(self.cache[key])):
-            self.cache[key] = self.load_value(key)
-        return self.cache[key]
-
-
-class ModelmetaDatasetIdTranslationCache(CacheBase):
-    """
-    Cache for translations via modelmeta from unique_id to filepath.
-    A filepath is valid if it exists in the filesystem.
-    Typical reason it might not exist is that the file has moved and been
-    reindexed. Worse reason is some kind of error in indexing.
+    Method `preload` preloads the cache with a large number of translations.
+    This speeds up the initial phase in which the cache becomes filled by usage.
     """
 
-    def __init__(self, session):
-        super().__init__()
+    def __init__(self, session, maxsize):
+        """
+        Constructor
+
+        :param session: SQLAlchemy database session for modelmeta database.
+            Used for retrieving translations.
+        :param maxsize: Maximum size of cache.
+        """
+        super().__init__(maxsize)
         self.session = session
 
-    def load_value(self, key):
-        """
-        Translate the unique_id to filepath via modelmeta.
-        Check the filepath is valid.
-        """
+    def __missing__(self, key):
+        """Retrieve the value (filepath) for a key (unique_id) from the
+        database and put it in the cache."""
+        print(f"cache miss for {key}")
         try:
             filepath = (
                 self.session.query(DataFile.filename)
@@ -54,25 +38,35 @@ class ModelmetaDatasetIdTranslationCache(CacheBase):
                     .scalar()
             )
         except MultipleResultsFound:
-            raise MultipleResultsFound(
+            raise KeyError(
                 f"Dataset id '{key}' has multiple matches in metadata database."
                 f"This is an internal error and should be reported to PCIC "
                 f"staff."
             )
         if filepath is None:
-            raise NoResultFound(
+            raise KeyError(
                 f"Dataset id '{key}' not found in metadata database."
             )
-        # If this freshly retrieved filepath is not valid, we're in trouble.
-        # This check is not strictly necessary, as the downstream user of this
-        # value will also check it.
-        # if not self.is_valid_value(filepath):
-        #     raise ValueError(
-        #         f"Filepath '{filepath}' corresponding to '{key}' "
-        #         f"does not exist."
-        #     )
+        self[key] = filepath
         return filepath
 
-    def is_valid_value(self, value):
-        """Check that the filepath exists."""
-        return os.path.exists(value)
+    def reload(self, key):
+        """Force a cached value to be reloaded. This is useful when it turns
+        out a translation is no longer valid (e.g., file has moved)."""
+        return self.__missing__(key)
+
+    def preload(self):
+        """
+        Preload the cache with a bunch o data. With this query, there is no
+        particular order the results will come in (and no particular order
+        that is likely to be useful), so it is a bit of shot in the dark
+        unless the cache is very big. Which it likely will be.
+        """
+        results = (
+            self.session
+                .query(DataFile.unique_id, DataFile.filename)
+                .limit(self.maxsize)
+                .all()
+        )
+        for unique_id, filepath in results:
+            self[unique_id] = filepath
