@@ -1,0 +1,48 @@
+version: '2.3'
+services:
+  nocache:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-nocache"
+    ports:
+      - "30510:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+    volumes:
+      - type: bind
+        source: ./flask.config.nocache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache"
+    ports:
+      - "30511:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  lrucache:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-lrucache"
+    ports:
+      - "30512:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+    volumes:
+      - type: bind
+        source: ./flask.config.lrucache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+networks:
+  default:
+    external:
+      name: pcicbr0
