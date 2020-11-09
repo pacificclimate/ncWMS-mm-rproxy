@@ -19,6 +19,7 @@ setup(
         'SQLAlchemy',
         'requests',
         'modelmeta',
+        'cachetools',
     ],
     zip_safe=True,
     include_package_data=True,
