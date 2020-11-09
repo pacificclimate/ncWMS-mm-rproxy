@@ -6,7 +6,7 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import requests
 
-from ncwms_mm_rproxy.cache import TranslationCache
+from ncwms_mm_rproxy.translation import Translation
 
 
 def create_app(test_config=None):
@@ -63,8 +63,8 @@ def create_app(test_config=None):
     excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
 
     db = SQLAlchemy(app)
-    translations = TranslationCache(
-        db.session, maxsize=app.config.get("CACHE_MAXSIZE", 10000)
+    translations = Translation(
+        db.session, cache=app.config.get("TRANSLATION_CACHE", False)
     )
     translations.preload()
 
@@ -212,7 +212,7 @@ def translate_dataset_id(translations, dataset_id, prefix):
     Translate a dataset identifier that is a modelmeta unique_id to an equivalent
     dynamic dataset identifier with the specified prefix.
     """
-    filepath = translations[dataset_id]
+    filepath = translations.get(dataset_id)
     return f"{prefix}{filepath}"
 
 

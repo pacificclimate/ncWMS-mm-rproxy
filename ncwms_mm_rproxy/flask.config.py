@@ -9,6 +9,7 @@ https://flask.palletsprojects.com/en/1.1.x/config/#builtin-configuration-values
 # TODO: Are convenience settings via environment variables a good idea?
 #  Convenient for development.
 import os
+from cachetools import LRUCache, LFUCache
 
 # SQLAlchemy configuration
 
@@ -38,4 +39,5 @@ NCWMS_DATASET_PARAM_NAMES = {"dataset"}
 EXCLUDED_REQUEST_HEADERS = {"host", "x-forwarded-for"}
 EXCLUDED_RESPONSE_HEADERS = {}
 
-CACHE_MAXSIZE = 10000
+# Cache may be any object with a dict-like interface
+TRANSLATION_CACHE = LRUCache(maxsize=10000)
