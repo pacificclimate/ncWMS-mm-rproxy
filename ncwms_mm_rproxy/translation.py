@@ -1,6 +1,7 @@
 """
 This module provides translation of modelmeta unique_id to filepath,
-with caching.
+with caching, and the option to reload (query the database anew) for a
+unique_id that is already cached.
 """
 from modelmeta import DataFile
 from sqlalchemy.orm.exc import MultipleResultsFound
@@ -8,10 +9,18 @@ from sqlalchemy.orm.exc import MultipleResultsFound
 
 class Translation:
     def __init__(self, session, cache=False):
+        """
+        Constructor.
+
+        :param session: SQLAlchemy session for modelmeta database
+        :param cache: If False, don't cache. Otherwise use this object as
+            the cache.
+        """
         self.session = session
         self.cache = cache
 
     def get(self, unique_id):
+        """Return the filepath corresponding to unique_id."""
         if self.cache is False:
             return self.load(unique_id)
         try:
@@ -22,6 +31,13 @@ class Translation:
             return self.load(unique_id)
 
     def load(self, unique_id):
+        """
+        Look up filepath corresponding to unique_id in the database,
+        cache the result if caching, and return the filepath.
+        This is separate from `get` so that the client can force a new query
+        on a unique_id already in the cache in case that value is outdated
+        (which it is up to the client to determine).
+        """
         try:
             filepath = (
                 self.session.query(DataFile.filename)
