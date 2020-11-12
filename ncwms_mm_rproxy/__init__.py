@@ -1,5 +1,6 @@
 import os
 import logging.config
+from time import perf_counter_ns
 
 from flask import Flask, request, Response
 from flask_cors import CORS
@@ -73,8 +74,10 @@ def create_app(test_config=None):
         nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
+        time_resp_start = perf_counter_ns()
 
         # Translate params containing dataset identifiers
+        time_translation_start = perf_counter_ns()
         ncwms_request_params = request.args.copy()
         for name in ncwms_request_params:
             if name.lower() in ncwms_layer_param_names:
@@ -85,6 +88,7 @@ def create_app(test_config=None):
                 ncwms_request_params[name] = translate_dataset_ids(
                     translations, ncwms_request_params[name], prefix
                 )
+        time_translation_end = perf_counter_ns()
 
         # Filter request headers, and update X-Forwarded-For
         ncwms_request_headers = {
@@ -122,12 +126,14 @@ def create_app(test_config=None):
         # - stream: if False, the response content will be immediately downloaded;
         #   if true, the raw response.
         app.logger.debug("sending ncWMS request")
+        time_ncwms_req_sent = perf_counter_ns()
         ncwms_response = requests.get(
             ncwms_url,
             params=ncwms_request_params,
             headers=ncwms_request_headers,
             stream=True,
         )
+        time_ncwms_resp_received = perf_counter_ns()
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
         app.logger.debug(f"ncWMS request headers: {ncwms_request_headers}")
         app.logger.debug(
@@ -177,6 +183,12 @@ def create_app(test_config=None):
         # - headers: A Headers object representing the response headers.
         #   Headers: An object that stores some headers. It has a dict-like interface
         #   but is ordered and can store the same keys multiple times.
+        time_resp_sent = perf_counter_ns()
+        response_headers['Server-Timing'] = (
+            f"tran;dur={time_translation_end - time_translation_start} "
+            f"ncwms;dur={time_ncwms_resp_received - time_ncwms_req_sent} "
+            f"app;dur={time_resp_sent - time_resp_start}"
+        )
         return Response(
             response=ncwms_response.raw,
             status=str(ncwms_response.status_code),
