@@ -3,8 +3,12 @@ This module provides translation of modelmeta unique_id to filepath,
 with caching, and the option to reload (query the database anew) for a
 unique_id that is already cached.
 """
+import logging
 from modelmeta import DataFile
 from sqlalchemy.orm.exc import MultipleResultsFound
+
+
+logger = logging.getLogger(__name__)
 
 
 class Translation:
@@ -24,10 +28,10 @@ class Translation:
         if self.cache is False:
             return self.load(unique_id)
         try:
-            print("Cache hit")
+            logger.debug(f"Cache hit: {unique_id}")
             return self.cache[unique_id]
         except KeyError:
-            print("Cache load (miss)")
+            logger.debug(f"Cache miss: {unique_id}")
             return self.load(unique_id)
 
     def load(self, unique_id):
@@ -38,6 +42,7 @@ class Translation:
         on a unique_id already in the cache in case that value is outdated
         (which it is up to the client to determine).
         """
+        logger.debug(f"Cache load: {unique_id}")
         try:
             filepath = (
                 self.session.query(DataFile.filename)
@@ -66,7 +71,7 @@ class Translation:
         unless the cache is very big. Which it likely will be.
         """
         if self.cache is False:
-            print(f"Cache preload: no caching")
+            logger.info(f"Cache preload: no caching")
             return
         query = self.session.query(DataFile.unique_id, DataFile.filename)
         if hasattr(self.cache, "maxsize"):
@@ -74,4 +79,4 @@ class Translation:
         results = query.all()
         for unique_id, filepath in results:
             self.cache[unique_id] = filepath
-        print(f"Cache preload: {len(self.cache)} items")
+        logger.info(f"Cache preload: {len(self.cache)} items")
