@@ -1,6 +1,6 @@
 import os
 import logging.config
-from time import perf_counter
+from time import perf_counter, sleep
 
 from flask import Flask, request, Response
 from flask_cors import CORS
@@ -68,6 +68,9 @@ def create_app(test_config=None):
     )
     excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
 
+
+    response_delay = app.config.get("RESPONSE_DELAY", None)
+
     db = SQLAlchemy(app)
     translations = Translation(
         db.session, cache=app.config.get("TRANSLATION_CACHE", False)
@@ -80,6 +83,9 @@ def create_app(test_config=None):
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
         time_resp_start = perf_counter()
+
+        if response_delay is not None:
+            sleep(response_delay)
 
         # Translate params containing dataset identifiers
         time_translation_start = perf_counter()
