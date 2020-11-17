@@ -1,5 +1,7 @@
 version: '2.3'
 services:
+  # No cache
+  
   nocache-X:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-nocache-X"
@@ -123,14 +125,125 @@ services:
         target: /app/ncwms_mm_rproxy/flask.config.py
         read_only: true
 
-  dictcache:
+  # dict cache
+  
+  dictcache-X:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
-    container_name: "ncwms-mm-rproxy-dictcache"
+    container_name: "ncwms-mm-rproxy-dictcache-X"
+    ports:
+      - "30520:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=1
+      - GUNICORN_WORKER_CONNECTIONS=1
+      - GUNICORN_THREADS=1
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-A:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-A"
     ports:
       - "30521:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=10
+      - GUNICORN_WORKER_CONNECTIONS=1
+      - GUNICORN_THREADS=1
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-B:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-B"
+    ports:
+      - "30522:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=1
+      - GUNICORN_WORKER_TYPE=gevent
+      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_THREADS=1
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-C:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-C"
+    ports:
+      - "30523:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=10
+      - GUNICORN_WORKER_TYPE=gevent
+      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_THREADS=1
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-D:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-D"
+    ports:
+      - "30524:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=1
+      - GUNICORN_WORKER_CONNECTIONS=1
+      - GUNICORN_THREADS=10
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-E:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-E"
+    ports:
+      - "30525:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=1
+      - GUNICORN_WORKER_TYPE=gevent
+      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_THREADS=10
+    volumes:
+      - type: bind
+        source: ./flask.config.dictcache.py
+        target: /app/ncwms_mm_rproxy/flask.config.py
+        read_only: true
+
+  dictcache-F:
+    image: pcic/ncwms-mm-rproxy:i5-improve-caching
+    container_name: "ncwms-mm-rproxy-dictcache-f"
+    ports:
+      - "30526:8000"
+    environment:
+      - MM_DSN
+      - FLASK_LOGLEVEL=INFO
+      - GUNICORN_WORKERS=1
+      - GUNICORN_WORKER_TYPE=gevent
+      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_THREADS=10
     volumes:
       - type: bind
         source: ./flask.config.dictcache.py
