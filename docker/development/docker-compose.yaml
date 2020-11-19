@@ -108,7 +108,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-X"
     ports:
-      - "30510:8000"
+      - "30520:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
@@ -124,7 +124,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-A"
     ports:
-      - "30511:8000"
+      - "30521:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
@@ -140,7 +140,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-B"
     ports:
-      - "30512:8000"
+      - "30522:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
@@ -157,7 +157,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-C"
     ports:
-      - "30513:8000"
+      - "30523:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
@@ -174,7 +174,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-D"
     ports:
-      - "30514:8000"
+      - "30524:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
@@ -191,7 +191,7 @@ services:
     image: pcic/ncwms-mm-rproxy:i5-improve-caching
     container_name: "ncwms-mm-rproxy-dictcache-E"
     ports:
-      - "30515:8000"
+      - "30525:8000"
     environment:
       - MM_DSN
       - FLASK_LOGLEVEL=INFO
