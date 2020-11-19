@@ -146,7 +146,7 @@ services:
       - FLASK_LOGLEVEL=INFO
       - GUNICORN_WORKERS=1
       - GUNICORN_WORKER_CLASS=gevent
-      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_WORKER_CONNECTIONS=1000
     volumes:
       - type: bind
         source: ./flask.config.dictcache.py
@@ -163,7 +163,7 @@ services:
       - FLASK_LOGLEVEL=INFO
       - GUNICORN_WORKERS=10
       - GUNICORN_WORKER_CLASS=gevent
-      - GUNICORN_WORKER_CONNECTIONS=10
+      - GUNICORN_WORKER_CONNECTIONS=1000
     volumes:
       - type: bind
         source: ./flask.config.dictcache.py
