@@ -66,8 +66,9 @@ def create_app(test_config=None):
             default = set()
         return type_(process(app.config.get(key, default)))
 
-    ncwms_layer_param_names = config("NCWMS_LAYER_PARAM_NAMES")
-    ncwms_dataset_param_names = config("NCWMS_DATASET_PARAM_NAMES")
+    dataset_param_names = (
+        config("NCWMS_LAYER_PARAM_NAMES") | config("NCWMS_DATASET_PARAM_NAMES")
+    )
 
     excluded_request_headers = config("EXCLUDED_REQUEST_HEADERS") | {
         "x-forwarded-for"
@@ -84,7 +85,7 @@ def create_app(test_config=None):
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
-        nonlocal ncwms_layer_param_names, ncwms_dataset_param_names
+        nonlocal dataset_param_names
         # app.logger.debug(f"Incoming args: {request.args}")
         # app.logger.debug(f"Incoming headers: {request.headers}")
         time_resp_start = perf_counter()
@@ -113,11 +114,7 @@ def create_app(test_config=None):
         time_translation_start = perf_counter()
         params = request.args
         ncwms_request_params = translate_params(
-            translations,
-            ncwms_layer_param_names,
-            ncwms_dataset_param_names,
-            prefix,
-            params,
+            translations, dataset_param_names, prefix, params
         )
         time_translation_end = perf_counter()
 
@@ -155,17 +152,9 @@ def create_app(test_config=None):
 
         if ncwms_response.status_code != 200 and translations.is_cached():
             # Cached translation may have changed. Update translation and retry.
-            reload_dataset_params(
-                translations,
-                ncwms_layer_param_names | ncwms_dataset_param_names,
-                params,
-            )
+            reload_dataset_params(translations, dataset_param_names, params)
             ncwms_request_params = translate_params(
-                translations,
-                ncwms_layer_param_names,
-                ncwms_dataset_param_names,
-                prefix,
-                params,
+                translations, dataset_param_names, prefix, params
             )
             ncwms_response = requests.get(
                 ncwms_url,
@@ -240,22 +229,14 @@ def create_app(test_config=None):
 
 # This should all be in another module, probably. Oh well.
 
-def translate_params(
-    translations,
-    layer_param_names,
-    dataset_param_names,
-    prefix,
-    params,
-):
+def translate_params(translations, dataset_param_names, prefix, params):
     """
     Translate ncWMS query parameters containing dataset identifiers.
     Returns a new parameters object.
 
     :param translations: (translation.Translation) id to filepath translations.
-    :param layer_param_names: (set) Names of query parameters that specify
-        layers.
-    :param dataset_param_names: (set) Names of query parameters that specify
-        layers.
+    :param dataset_param_names: (set) Names of query parameters that contain
+        dataset ids. Lower case.
     :param prefix: (str) Dynamic dataset prefix.
     :param params: (dict) Query parameter values
     :return (dict-like) Parameters object with translated query parameters.
@@ -263,11 +244,7 @@ def translate_params(
     """
     result = params.copy()
     for name in result:
-        if name.lower() in layer_param_names:
-            result[name] = translate_layer_ids(
-                translations, result[name], prefix
-            )
-        elif name.lower() in dataset_param_names:
+        if name.lower() in dataset_param_names:
             result[name] = translate_dataset_ids(
                 translations, result[name], prefix
             )
@@ -294,52 +271,55 @@ def reload_dataset_params(translations, dataset_param_names, params):
 
 
 def get_dataset_ids(value, id_sep=",", var_sep="/"):
-    """Extract dataset id's from a string containing a comma-separated
-    list of dataset ids or layer ids."""
+    """
+    Extract dataset id's from a string containing a list of dataset ids or
+    layer ids.
+
+    :param value: (str) String to extract from
+    :param id_sep: (str) String separating multiple id's in string.
+    :param var_sep: (str) String separating dataset id from variable id
+        in layer identifiers.
+    :return: (list) Dataset ids (only; variable ids, if present, are discarded).
+    """
     return [item.split(var_sep)[0] for item in value.split(id_sep)]
 
 
-# TODO: Treat dataset id's and layer id's uniformly as `get_dataset_ids` does.
+def translate_dataset_ids(translations, ids, prefix, id_sep=",", var_sep="/"):
+    """
+    Translate all dataset id's present in `ids` from static to dynamic form.
+    Handles both pure dataset identifiers and layer identifiers (with variable
+    specifier).
 
-id_separator = ","
-
-
-def translate_dataset_ids(translations, dataset_ids, prefix):
-    return id_separator.join(
-        translate_dataset_id(translations, dataset_id, prefix)
-        for dataset_id in dataset_ids.split(id_separator)
+    :param translations: (translation.Translation) id to filepath translations.
+    :param ids: (str) String containing dataset ids to be translated.
+    :param prefix: (str) Dynamic dataset prefix to form dynamic id.
+    :param id_sep: (str) String separating multiple id's in string.
+    :param var_sep: (str) String separating dataset id from variable id
+        in layer identifiers.
+    :return: String with all dataset id's present in it translated from
+        static to dynamic form.
+    """
+    return id_sep.join(
+        translate_dataset_id(translations, id_, prefix, var_sep=var_sep)
+        for id_ in ids.split(id_sep)
     )
 
 
-def translate_layer_ids(translations, layer_ids, prefix):
-    return id_separator.join(
-        translate_layer_id(translations, layer_id, prefix)
-        for layer_id in layer_ids.split(id_separator)
-    )
-
-
-def translate_dataset_id(translations, dataset_id, prefix):
+def translate_dataset_id(translations, id_, prefix, var_sep="/"):
     """
-    Translate a dataset identifier that is a modelmeta unique_id to an
-    equivalent dynamic dataset identifier with the specified prefix.
+    Translate a string containing a single dataset id.
+    Handles both pure dataset identifiers and layer identifiers (with variable
+    specifier).
+
+    :param translations: (translation.Translation) id to filepath translations.
+    :param id_: (str) String containing dataset id to be translated.
+    :param prefix: (str) Dynamic dataset prefix to form dynamic id.
+    :param var_sep: (str) String separating dataset id from variable id
+        in layer identifiers.
+    :return: String with all dataset id's present in it translated from
+        static to dynamic form.
     """
-    filepath = translations.get(dataset_id)
-    return f"{prefix}{filepath}"
-
-
-def translate_layer_id(session, layer_id, prefix):
-    """
-    Translate a layer identifier containing a dataset identifier that is a
-    modelmeta unique_id to an equivalent dynamic layer identifier with the
-    specified prefix.
-
-    Note: A layer identifier has the form <dataset id>/<variable id>.
-
-    :param session: (sqlalchemy.orm.Session) Session for modelmeta database
-    :param layer_id: (str) Layer identifier
-    :param prefix: (str) Dynamic dataset prefix
-    :return: (str) Dynamic dataset layer identifier
-    """
-    dataset_id, variable_id = layer_id.split("/")
-    dyn_dataset_id = translate_dataset_id(session, dataset_id, prefix)
-    return f"{dyn_dataset_id}/{variable_id}"
+    ids = id_.split(var_sep)
+    # Dataset id is always the first element. Translate it.
+    ids[0] = translations.get(ids[0])
+    return f"{prefix}{var_sep.join(ids)}"
