@@ -1,4 +1,4 @@
-# ncWMS-mm-proxy
+# ncWMS-mm-rproxy
 
 A reverse proxy (request forwarder) for ncWMS that translates dataset id's from
 static dataset form (`modelmeta` `unique_id`) to dynamic dataset form
@@ -25,7 +25,7 @@ For production installation, see the
 
 ## Web API
 
-ncWMS-mm-proxy provides the following API endpoints:
+ncWMS-mm-rproxy provides the following API endpoints:
 
 ### `/dynamic/<prefix>`
 
@@ -215,12 +215,12 @@ worker_class = "gthread"
 threads = 2 * multiprocessing.cpu_count() + 1
 ```
 
-### Gunicorn configuration by Docker volume mount
+### Gunicorn configuration via Docker volume mount
 
 To override the default configuration file, mount a different configuration
 file to the target `docker/production/gunicorn.config.py`.
 
-### Gunicorn configuration by environment variables
+### Gunicorn configuration via environment variables
 
 Following this 
 [article](https://sebest.github.io/post/protips-using-gunicorn-inside-a-docker-image/),
