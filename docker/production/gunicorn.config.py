@@ -1,11 +1,16 @@
 """Gunicorn configuration"""
 
 import os
+import multiprocessing
 
 # Default configuration
 logconfig = "./docker/production/logging.config"
 print_config = True
 bind = ":8000"
+
+workers = 2 * multiprocessing.cpu_count() + 1
+worker_class = "gevent"
+worker_connections = 1000
 
 # Override default configuration with environment variables with names beginning
 # `GUNICORN_`. Slightly perverse perverse given that gunicorn's built-in configuration
