@@ -240,3 +240,8 @@ export FLASK_ENV=development
 flask run
 ```
 
+## Future development
+
+If the synchronous nature of Flask becomes a problem in future, it is worth
+considering [Quart](https://gitlab.com/pgjones/quart), 
+a Python ASGI web microframework with the same API as Flask.
