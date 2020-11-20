@@ -14,26 +14,32 @@ def create_app(test_config=None):
     """Create an instance of our app."""
 
     # Configure all loggers, including Flask app
-    logging.config.dictConfig({
-        'version': 1,
-        'formatters': {'default': {
-            'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-        }},
-        'handlers': {'wsgi': {
-            'class': 'logging.StreamHandler',
-            'stream': 'ext://flask.logging.wsgi_errors_stream',
-            'formatter': 'default'
-        }},
-        'root': {
-            'level': os.getenv("FLASK_LOGLEVEL", "INFO"),
-            'handlers': ['wsgi']
-        },
-        'loggers': {
-            'ncwms_mm_rproxy.translation': {
-                'level': os.getenv("FLASK_LOGLEVEL", "INFO"),
-            }
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "formatters": {
+                "default": {
+                    "format": "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+                }
+            },
+            "handlers": {
+                "wsgi": {
+                    "class": "logging.StreamHandler",
+                    "stream": "ext://flask.logging.wsgi_errors_stream",
+                    "formatter": "default",
+                }
+            },
+            "root": {
+                "level": os.getenv("FLASK_LOGLEVEL", "INFO"),
+                "handlers": ["wsgi"],
+            },
+            "loggers": {
+                "ncwms_mm_rproxy.translation": {
+                    "level": os.getenv("FLASK_LOGLEVEL", "INFO")
+                }
+            },
         }
-    })
+    )
 
     # Create and configure the Flask app
 
@@ -63,11 +69,10 @@ def create_app(test_config=None):
     ncwms_layer_param_names = config("NCWMS_LAYER_PARAM_NAMES")
     ncwms_dataset_param_names = config("NCWMS_DATASET_PARAM_NAMES")
 
-    excluded_request_headers = (
-        config("EXCLUDED_REQUEST_HEADERS") | {"x-forwarded-for"}
-    )
+    excluded_request_headers = config("EXCLUDED_REQUEST_HEADERS") | {
+        "x-forwarded-for"
+    }
     excluded_response_headers = config("EXCLUDED_RESPONSE_HEADERS")
-
 
     response_delay = app.config.get("RESPONSE_DELAY", None)
 
@@ -103,17 +108,19 @@ def create_app(test_config=None):
 
         # Filter request headers, and update X-Forwarded-For
         ncwms_request_headers = {
-            name: value for name, value in request.headers.items()
+            name: value
+            for name, value in request.headers.items()
             if name.lower() not in excluded_request_headers
         }
-        xfw_separator = ', '
+        xfw_separator = ", "
         try:
-            x_forwarded_for = \
-                request.headers["X-Forwarded-For"].split(xfw_separator)
+            x_forwarded_for = request.headers["X-Forwarded-For"].split(
+                xfw_separator
+            )
         except KeyError:
             x_forwarded_for = []
         ncwms_request_headers["X-Forwarded-For"] = xfw_separator.join(
-            x_forwarded_for + [request.environ['REMOTE_ADDR']]
+            x_forwarded_for + [request.environ["REMOTE_ADDR"]]
         )
 
         # app.logger.debug(f"Outgoing args: {args}")
@@ -121,21 +128,21 @@ def create_app(test_config=None):
         # Forward the request to ncWMS
         #
         # Notes on flask.request contents:
-        # - flask.request.headers: The headers from the WSGI environ as immutable
-        #   EnvironHeaders.
+        # - flask.request.headers: The headers from the WSGI environ as
+        #   immutable EnvironHeaders.
         #   EnvironHeaders: immutable Headers.
-        #   Headers: An object that stores some headers. It has a dict-like interface
-        #   but is ordered and can store the same keys multiple times.
+        #   Headers: An object that stores some headers. It has a dict-like
+        #   interface but is ordered and can store the same keys multiple times.
         #
         # Notes on requests.get arguments:
         #
-        # - params: Dictionary, list of tuples or bytes to send in the query string
-        #   for the Request
+        # - params: Dictionary, list of tuples or bytes to send in the query
+        #   string for the Request
         #
         # - headers: Dictionary of HTTP Headers to send with the Request
         #
-        # - stream: if False, the response content will be immediately downloaded;
-        #   if true, the raw response.
+        # - stream: if False, the response content will be immediately
+        #   downloaded; if true, the raw response.
         app.logger.debug("sending ncWMS request")
         time_ncwms_req_sent = perf_counter()
         ncwms_response = requests.get(
@@ -147,17 +154,14 @@ def create_app(test_config=None):
         time_ncwms_resp_received = perf_counter()
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
         app.logger.debug(f"ncWMS request headers: {ncwms_request_headers}")
-        app.logger.debug(
-            f"ncWMS response status: {ncwms_response.status_code}"
-        )
-        app.logger.debug(
-            f"ncWMS response headers: {ncwms_response.headers}"
-        )
+        app.logger.debug(f"ncWMS response status: {ncwms_response.status_code}")
+        app.logger.debug(f"ncWMS response headers: {ncwms_response.headers}")
 
         # Return the ncWMS response to the client
 
         response_headers = {
-            name: value for name, value in ncwms_response.headers.items()
+            name: value
+            for name, value in ncwms_response.headers.items()
             if name.lower() not in excluded_response_headers
         }
 
@@ -171,18 +175,19 @@ def create_app(test_config=None):
         #   for you. This is undesirable as we don't need or want to decode such
         #   encodings. I think raw response is more like what we want.
         #
-        # - response.raw: the response as an urllib3.response.HTTPRespoinse object
-        #   In the rare case that you’d like to get the raw socket response from the
-        #   server, you can access r.raw. If you want to do this, make sure you set
-        #   stream=True in your initial request. Once you do, you can do this:
+        # - response.raw: the response as an urllib3.response.HTTPRespoinse
+        #   object In the rare case that you’d like to get the raw socket
+        #   response from the server, you can access r.raw. If you want to do
+        #   this, make sure you set stream=True in your initial request. Once
+        #   you do, you can do this:
         #   r.raw --> <urllib3.response.HTTPResponse object at 0x101194810>
-        #   I think this is what I want, but not certain. Compatibility of HTTPResponse
-        #   with Flask Response object?
+        #   I think this is what I want, but not certain. Compatibility of
+        #   HTTPResponse with Flask Response object?
         #
-        # - response.headers: Case-insensitive Dictionary of Response Headers. For
-        #   example, headers['content-encoding'] will return the value of a
-        #   'Content-Encoding' response header. Compatibility of this object with
-        #   Response(headers=)?
+        # - response.headers: Case-insensitive Dictionary of Response Headers.
+        #   For example, headers['content-encoding'] will return the value of a
+        #   'Content-Encoding' response header. Compatibility of this object
+        #   with Response(headers=)?
         #
         #
         # Notes on flask.Response:
@@ -192,10 +197,10 @@ def create_app(test_config=None):
         # - status: A string with a response status.
         #
         # - headers: A Headers object representing the response headers.
-        #   Headers: An object that stores some headers. It has a dict-like interface
-        #   but is ordered and can store the same keys multiple times.
+        #   Headers: An object that stores some headers. It has a dict-like
+        #   interface but is ordered and can store the same keys multiple times.
         time_resp_sent = perf_counter()
-        response_headers['Server-Timing'] = (
+        response_headers["Server-Timing"] = (
             f"tran;dur={time_translation_end - time_translation_start} "
             f"ncwms;dur={time_ncwms_resp_received - time_ncwms_req_sent} "
             f"app;dur={time_resp_sent - time_resp_start}"
@@ -213,7 +218,7 @@ def create_app(test_config=None):
     return app
 
 
-id_separator = ','
+id_separator = ","
 
 
 def translate_dataset_ids(translations, dataset_ids, prefix):
@@ -232,8 +237,8 @@ def translate_layer_ids(translations, layer_ids, prefix):
 
 def translate_dataset_id(translations, dataset_id, prefix):
     """
-    Translate a dataset identifier that is a modelmeta unique_id to an equivalent
-    dynamic dataset identifier with the specified prefix.
+    Translate a dataset identifier that is a modelmeta unique_id to an
+    equivalent dynamic dataset identifier with the specified prefix.
     """
     filepath = translations.get(dataset_id)
     return f"{prefix}{filepath}"
@@ -241,8 +246,9 @@ def translate_dataset_id(translations, dataset_id, prefix):
 
 def translate_layer_id(session, layer_id, prefix):
     """
-    Translate a layer identifier containing a dataset identifier that is a modelmeta
-    unique_id to an equivalent dynamic layer identifier with the specified prefix.
+    Translate a layer identifier containing a dataset identifier that is a
+    modelmeta unique_id to an equivalent dynamic layer identifier with the
+    specified prefix.
 
     Note: A layer identifier has the form <dataset id>/<variable id>.
 
@@ -251,6 +257,6 @@ def translate_layer_id(session, layer_id, prefix):
     :param prefix: (str) Dynamic dataset prefix
     :return: (str) Dynamic dataset layer identifier
     """
-    dataset_id, variable_id = layer_id.split('/')
+    dataset_id, variable_id = layer_id.split("/")
     dyn_dataset_id = translate_dataset_id(session, dataset_id, prefix)
     return f"{dyn_dataset_id}/{variable_id}"

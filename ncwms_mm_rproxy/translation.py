@@ -46,8 +46,8 @@ class Translation:
         try:
             filepath = (
                 self.session.query(DataFile.filename)
-                    .filter(DataFile.unique_id == unique_id)
-                    .scalar()
+                .filter(DataFile.unique_id == unique_id)
+                .scalar()
             )
         except MultipleResultsFound:
             raise KeyError(
