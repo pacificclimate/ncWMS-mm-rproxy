@@ -78,7 +78,7 @@ def create_app(test_config=None):
 
     db = SQLAlchemy(app)
     translations = Translation(
-        db.session, cache=app.config.get("TRANSLATION_CACHE", False)
+        db.session, cache=app.config.get("TRANSLATION_CACHE", None)
     )
     translations.preload()
 
@@ -91,20 +91,6 @@ def create_app(test_config=None):
 
         if response_delay is not None:
             sleep(response_delay)
-
-        # Translate params containing dataset identifiers
-        time_translation_start = perf_counter()
-        ncwms_request_params = request.args.copy()
-        for name in ncwms_request_params:
-            if name.lower() in ncwms_layer_param_names:
-                ncwms_request_params[name] = translate_layer_ids(
-                    translations, ncwms_request_params[name], prefix
-                )
-            if name.lower() in ncwms_dataset_param_names:
-                ncwms_request_params[name] = translate_dataset_ids(
-                    translations, ncwms_request_params[name], prefix
-                )
-        time_translation_end = perf_counter()
 
         # Filter request headers, and update X-Forwarded-For
         ncwms_request_headers = {
@@ -123,10 +109,20 @@ def create_app(test_config=None):
             x_forwarded_for + [request.environ["REMOTE_ADDR"]]
         )
 
-        # app.logger.debug(f"Outgoing args: {args}")
+        # Translate params containing dataset identifiers
+        time_translation_start = perf_counter()
+        params = request.args
+        ncwms_request_params = translate_params(
+            translations,
+            ncwms_layer_param_names,
+            ncwms_dataset_param_names,
+            prefix,
+            params,
+        )
+        time_translation_end = perf_counter()
 
         # Forward the request to ncWMS
-        #
+
         # Notes on flask.request contents:
         # - flask.request.headers: The headers from the WSGI environ as
         #   immutable EnvironHeaders.
@@ -143,6 +139,7 @@ def create_app(test_config=None):
         #
         # - stream: if False, the response content will be immediately
         #   downloaded; if true, the raw response.
+
         app.logger.debug("sending ncWMS request")
         time_ncwms_req_sent = perf_counter()
         ncwms_response = requests.get(
@@ -151,11 +148,33 @@ def create_app(test_config=None):
             headers=ncwms_request_headers,
             stream=True,
         )
-        time_ncwms_resp_received = perf_counter()
         app.logger.debug(f"ncWMS request url: {ncwms_response.url}")
         app.logger.debug(f"ncWMS request headers: {ncwms_request_headers}")
         app.logger.debug(f"ncWMS response status: {ncwms_response.status_code}")
         app.logger.debug(f"ncWMS response headers: {ncwms_response.headers}")
+
+        if ncwms_response.status_code != 200 and translations.is_cached():
+            # Cached translation may have changed. Update translation and retry.
+            reload_dataset_params(
+                translations,
+                ncwms_layer_param_names | ncwms_dataset_param_names,
+                params,
+            )
+            ncwms_request_params = translate_params(
+                translations,
+                ncwms_layer_param_names,
+                ncwms_dataset_param_names,
+                prefix,
+                params,
+            )
+            ncwms_response = requests.get(
+                ncwms_url,
+                params=ncwms_request_params,
+                headers=ncwms_request_headers,
+                stream=True,
+            )
+
+        time_ncwms_resp_received = perf_counter()
 
         # Return the ncWMS response to the client
 
@@ -199,6 +218,7 @@ def create_app(test_config=None):
         # - headers: A Headers object representing the response headers.
         #   Headers: An object that stores some headers. It has a dict-like
         #   interface but is ordered and can store the same keys multiple times.
+
         time_resp_sent = perf_counter()
         response_headers["Server-Timing"] = (
             f"tran;dur={time_translation_end - time_translation_start} "
@@ -217,6 +237,69 @@ def create_app(test_config=None):
 
     return app
 
+
+# This should all be in another module, probably. Oh well.
+
+def translate_params(
+    translations,
+    layer_param_names,
+    dataset_param_names,
+    prefix,
+    params,
+):
+    """
+    Translate ncWMS query parameters containing dataset identifiers.
+    Returns a new parameters object.
+
+    :param translations: (translation.Translation) id to filepath translations.
+    :param layer_param_names: (set) Names of query parameters that specify
+        layers.
+    :param dataset_param_names: (set) Names of query parameters that specify
+        layers.
+    :param prefix: (str) Dynamic dataset prefix.
+    :param params: (dict) Query parameter values
+    :return (dict-like) Parameters object with translated query parameters.
+        Non dataset parameters are copied unchanged.
+    """
+    result = params.copy()
+    for name in result:
+        if name.lower() in layer_param_names:
+            result[name] = translate_layer_ids(
+                translations, result[name], prefix
+            )
+        elif name.lower() in dataset_param_names:
+            result[name] = translate_dataset_ids(
+                translations, result[name], prefix
+            )
+    return result
+
+
+def reload_dataset_params(translations, dataset_param_names, params):
+    """
+    Reload translations for any datasets specified in `params`,
+    if translations are cached.
+    
+    :param translations: (translation.Translation) id to filepath translations.
+    :param dataset_param_names: (set) Names of query parameters that contain
+        dataset identifiers. Lower case.
+    :param params: (dict) Query parameter values.
+    """
+    if not translations.is_cached():
+        # This is pointless if there is no translation cache.
+        return
+    for name in params:
+        if name.lower() in dataset_param_names:
+            for dataset_id in get_dataset_ids(params[name]):
+                translations.fetch(dataset_id)
+
+
+def get_dataset_ids(value, id_sep=",", var_sep="/"):
+    """Extract dataset id's from a string containing a comma-separated
+    list of dataset ids or layer ids."""
+    return [item.split(var_sep)[0] for item in value.split(id_sep)]
+
+
+# TODO: Treat dataset id's and layer id's uniformly as `get_dataset_ids` does.
 
 id_separator = ","
 

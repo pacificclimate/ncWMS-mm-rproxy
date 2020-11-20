@@ -133,9 +133,9 @@ Cache object may be any object with a dict-like interface, e.g., a dict,
 or an instance of any of the cache classes from `cachetools` 
 (which is installed by default).
 
-Omit or `False` for no caching.
+Omit or `None` for no caching.
 
-Default: `dict()`.
+Default: `dict()` (unbounded size cache).
 
 #### `RESPONSE_DELAY`
 
