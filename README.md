@@ -245,3 +245,10 @@ flask run
 If the synchronous nature of Flask becomes a problem in future, it is worth
 considering [Quart](https://gitlab.com/pgjones/quart), 
 a Python ASGI web microframework with the same API as Flask.
+We may be able to do a simple port to it.
+
+It does not seem necessary to share a translation cache across 
+workers/instances of this service, given the relatively small memory
+footprint and modest database demand of each cache.
+However, if we wish to do so, we may wish to use [Redis](https://redis.io/) 
+for the shared cache service.
