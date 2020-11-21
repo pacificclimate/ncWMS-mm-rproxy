@@ -5,7 +5,11 @@ itself.
 See https://flask.palletsprojects.com/en/1.1.x/config/, and in particular
 https://flask.palletsprojects.com/en/1.1.x/config/#builtin-configuration-values
 """
+
+# TODO: Are convenience settings via environment variables a good idea?
+#  Convenient for development.
 import os
+from cachetools import LRUCache, LFUCache
 
 # SQLAlchemy configuration
 
@@ -20,8 +24,8 @@ SQLALCHEMY_ENGINE_OPTIONS = dict(
 )
 
 # Translation app configuration
-# See README for explanations.
 
+# Note: setting via env var.
 NCWMS_URL = os.getenv(
     "NCWMS_URL", "https://services.pacificclimate.org/dev/ncwms"
 )
@@ -29,6 +33,7 @@ NCWMS_LAYER_PARAM_NAMES = {"layers", "layer", "layername", "query_layers"}
 NCWMS_DATASET_PARAM_NAMES = {"dataset"}
 
 EXCLUDED_REQUEST_HEADERS = {"host", "x-forwarded-for"}
-EXCLUDED_RESPONSE_HEADERS = set()
+EXCLUDED_RESPONSE_HEADERS = {}
 
-TRANSLATION_CACHE = dict()
+# Cache may be any object with a dict-like interface
+TRANSLATION_CACHE = False
