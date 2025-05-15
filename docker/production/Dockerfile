@@ -21,13 +21,11 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 
 RUN curl -sSL https://install.python-poetry.org | python3
 
-COPY pyproject.toml poetry.lock* ./
+COPY . .
 
 RUN poetry config virtualenvs.in-project true && \
     poetry lock && \
     poetry install
-
-COPY . .
 
 EXPOSE 8000
 
