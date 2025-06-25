@@ -24,7 +24,6 @@ RUN curl -sSL https://install.python-poetry.org | python3
 COPY . .
 
 RUN poetry config virtualenvs.in-project true && \
-    poetry lock && \
     poetry install
 
 EXPOSE 8000
