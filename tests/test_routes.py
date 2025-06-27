@@ -28,7 +28,7 @@ def client(app):
 
 class TestAppEndpoints:
     def test_healthz(self, client):
-        response = client.get("/healthz")
+        response = client.get("/health")
         assert response.status_code == 200
         assert response.data == b"OK"
 
