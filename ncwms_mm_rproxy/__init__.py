@@ -228,8 +228,8 @@ def create_app(test_config=None):
     def handle_no_translation(e):
         return e.args[0], 404
 
-    @app.route("/healthz", methods=["GET"])
-    def healthz():
+    @app.route("/health", methods=["GET"])
+    def health():
         return "OK", 200
 
     return app
