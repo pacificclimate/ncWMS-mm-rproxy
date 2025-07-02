@@ -4,24 +4,19 @@ A reverse proxy (request forwarder) for ncWMS that translates dataset id's from
 static dataset form (`modelmeta` `unique_id`) to dynamic dataset form
 (prefix + filepath), using a `modelmeta` database to provide the translations.
 
-## Installation
-
-For a local installation:
+## Installation and Testing
 
 ```
-pip install -i https://pypi.pacificclimate.org/simple/ -r requirements.txt
-pip3 install .
+git clone git@github.com:pacificclimate/ncWMS-mm-rproxy.git
+cd ncWMS-mm-rproxy
+poetry install --extras "test"
+
+# Tests can be run with `pytest`.
+poetry run pytest
 ```
 
-If you wish to run Gunicorn locally:
-
-```
-pip install gunicorn
-pip install gunicorn[gevent]
-```
-
-For production installation, see the 
-[production Dockerfile](./docker/production/Dockerfile). 
+For production installation, see the
+[production Dockerfile](./docker/production/Dockerfile).
 
 ## Web API
 
@@ -36,12 +31,12 @@ ncWMS dataset identifiers from static form to dynamic form.
 - Static dataset id form is a `modelmeta` `unique_id`.
 
 - Dynamic dataset form is a dataset id computed as `prefix` + `filepath`,
-where `prefix` is specified in the endpoint URL above,
-and `filepath` the filepath retrieved from the `modelmeta` database for
-`unique_id`.
+  where `prefix` is specified in the endpoint URL above,
+  and `filepath` the filepath retrieved from the `modelmeta` database for
+  `unique_id`.
 
 - The names of ncWMS dataset (and layer) identifier query parameters are
-specified in the application configuration, as is the target ncWMS service.
+  specified in the application configuration, as is the target ncWMS service.
 
 For example, a request to `/dynamic/x&DATASET=id1` is forwarded to
 the ncWMS service as `?DATASET=x/path/to/file/for/id1`.
@@ -49,24 +44,30 @@ the ncWMS service as `?DATASET=x/path/to/file/for/id1`.
 Note that `prefix` can be any name (string), and should correspond to one
 of the dynamic datasets configured in the target ncWMS service.
 
+### `/health`
+
+Returns a basic 200 OK with the body OK if the app is running.
+This can be used for container health checks or external monitoring:
+https://beehive.pacificclimate.org/ncwms-mm-rproxy/health
+
 ## Application configuration
 
 The application is configured primarily through the Flask configuration
 file `flask.config.py`. Some of these values are configured to be overridable
 by environment variables.
 
-### Configuration file 
+### Configuration file
 
-The app proper (i.e., the Flask application) is configured in 
+The app proper (i.e., the Flask application) is configured in
 `flask.config.py`. This file contains both generic
-infrastructure (Flask, SQLAlchemy) configuration values and 
+infrastructure (Flask, SQLAlchemy) configuration values and
 app-specific configuration values.
 
 Note: The configuration file contains Python code. Any valid Python can be
-placed in it to set configuration values. 
+placed in it to set configuration values.
 For details, see the example in
 [The Application Factory](https://flask.palletsprojects.com/en/1.1.x/tutorial/factory/)
-and the 
+and the
 [API](https://flask.palletsprojects.com/en/1.1.x/api/#flask.Config.from_pyfile).
 
 The app-specific configuration values are:
@@ -130,7 +131,7 @@ Default: empty set.
 
 Object used to cache translations (mappings from unique_id to filepath).
 Cache object may be any object with a dict-like interface, e.g., a dict,
-or an instance of any of the cache classes from `cachetools` 
+or an instance of any of the cache classes from `cachetools`
 (which is installed by default).
 
 Omit or `None` for no caching.
@@ -141,7 +142,7 @@ Default: `dict()` (unbounded size cache).
 
 Number of seconds to delay beginning computations when a request is received.
 Useful for testing to highlight serialization of concurrent requests.
-Omit or `None` for no delay. 
+Omit or `None` for no delay.
 (Note: Value `0` may cause scheduling weirdness. Use `None` instead.).
 
 Default: `None`.
@@ -181,14 +182,14 @@ requests, a synchronous Flask app should be served with a WSGI server that
 supports concurrency. Gunicorn is our choice for such a server.
 
 The project [production Dockerfile](docker/production/Dockerfile) installs
-Gunicorn and serves the app using it. Gunicorn is configured in 
+Gunicorn and serves the app using it. Gunicorn is configured in
 [`docker/production/gunicorn.config.py`](docker/production/gunicorn.config.py).
 
 #### Preferred configuration (default)
 
 Performance testing suggests that the most performant configuration of
 Gunicorn for this app is multiple `gevent` workers, each accepting many
-connections. Common recommendations for these parameters are: 
+connections. Common recommendations for these parameters are:
 
 - `workers = 2 * cpus + 1`, or `workers = (2 to 4) * cpus`
 - `worker_connections = 1000`
@@ -222,7 +223,7 @@ file to the target `docker/production/gunicorn.config.py`.
 
 ### Gunicorn configuration via environment variables
 
-Following this 
+Following this
 [article](https://sebest.github.io/post/protips-using-gunicorn-inside-a-docker-image/),
 we also enable configuring Gunicorn via environment variables.
 These environment variables are named `GUNICORN_<NAME>`, where `<NAME>`
@@ -243,12 +244,12 @@ flask run
 ## Future development
 
 If the synchronous nature of Flask becomes a problem in future, it is worth
-considering [Quart](https://gitlab.com/pgjones/quart), 
+considering [Quart](https://gitlab.com/pgjones/quart),
 a Python ASGI web microframework with the same API as Flask.
 We may be able to do a simple port to it.
 
-It does not seem necessary to share a translation cache across 
+It does not seem necessary to share a translation cache across
 workers/instances of this service, given the relatively small memory
 footprint and modest database demand of each cache.
-However, if we wish to do so, we may wish to use [Redis](https://redis.io/) 
+However, if we wish to do so, we may wish to use [Redis](https://redis.io/)
 for the shared cache service.
