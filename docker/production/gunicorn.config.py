@@ -5,7 +5,9 @@ import multiprocessing
 
 # Default configuration
 logconfig = "./docker/production/logging.config"
-print_config = True
+
+# Will exit after printing the configuration. 
+# print_config = True 
 bind = ":8000"
 
 workers = 2 * multiprocessing.cpu_count() + 1

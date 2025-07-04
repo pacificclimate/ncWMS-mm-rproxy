@@ -9,6 +9,8 @@ import requests
 
 from ncwms_mm_rproxy.translation import Translation
 
+db = SQLAlchemy()
+
 
 def create_app(test_config=None):
     """Create an instance of our app."""
@@ -77,11 +79,13 @@ def create_app(test_config=None):
 
     response_delay = app.config.get("RESPONSE_DELAY", None)
 
-    db = SQLAlchemy(app)
-    translations = Translation(
-        db.session, cache=app.config.get("TRANSLATION_CACHE", None)
-    )
-    translations.preload()
+    db.init_app(app)
+
+    with app.app_context():
+        translations = Translation(
+            db.session, cache=app.config.get("TRANSLATION_CACHE", None)
+        )
+        translations.preload()
 
     @app.route("/dynamic/<prefix>", methods=["GET"])
     def dynamic(prefix):
@@ -223,6 +227,10 @@ def create_app(test_config=None):
     @app.errorhandler(ValueError)
     def handle_no_translation(e):
         return e.args[0], 404
+
+    @app.route("/health", methods=["GET"])
+    def health():
+        return "OK", 200
 
     return app
 

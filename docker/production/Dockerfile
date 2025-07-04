@@ -1,23 +1,30 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
-MAINTAINER Rod Glover <rglover@uvic.ca>
+LABEL maintainer="Rod Glover <rglover@uvic.ca>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get -yq install \
-        libpq-dev \
-        python3 \
-        python3-dev \
-        python3-pip \
-        postgresql-client
+    curl \
+    libpq-dev \
+    python3 \
+    python3-dev \
+    python3-pip \
+    postgresql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-ADD . /app
 WORKDIR /app
 
-RUN pip3 install -i https://pypi.pacificclimate.org/simple/ -r requirements.txt
-RUN pip3 install gunicorn && \
-    pip3 install gunicorn[gevent]
-RUN pip3 install .
+ENV POETRY_HOME="/opt/poetry"
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+RUN curl -sSL https://install.python-poetry.org | python3
+
+COPY . .
+
+RUN poetry config virtualenvs.in-project true && \
+    poetry install
 
 EXPOSE 8000
 
@@ -25,4 +32,4 @@ RUN groupadd -g 999 user \
     && useradd -r -u 999 -g user user
 USER user
 
-ENTRYPOINT ["gunicorn", "-c", "./docker/production/gunicorn.config.py", "ncwms_mm_rproxy.wsgi:app"]
+ENTRYPOINT ["poetry", "run", "gunicorn", "-c", "./docker/production/gunicorn.config.py", "ncwms_mm_rproxy.wsgi:app"]
