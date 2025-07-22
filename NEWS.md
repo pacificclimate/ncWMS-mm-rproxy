@@ -2,7 +2,7 @@
 
 ## 1.1.0
 
-_2025-070-22_
+_2025-Jul-22_
 
 - Maintenance updates [#14](https://github.com/pacificclimate/ncWMS-mm-rproxy/pull/14)
 - Add unit tests and CI workflow [#15](https://github.com/pacificclimate/ncWMS-mm-rproxy/pull/15)
