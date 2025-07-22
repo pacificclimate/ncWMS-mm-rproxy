@@ -1,6 +1,6 @@
 [project]
 name = "ncwms-mm-rproxy"
-version = "1.0.0"
+version = "1.1.0"
 description = "PCIC reverse proxy for ncWMS via modelmeta"
 authors = [{ name = "Rod Glover", email = "rglover@uvic.ca" }]
 license = { text = "GNU General Public License v3 (GPLv3)" }
