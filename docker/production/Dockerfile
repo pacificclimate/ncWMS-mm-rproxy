@@ -5,6 +5,7 @@ LABEL maintainer="Rod Glover <rglover@uvic.ca>"
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get -yq install \
+    build-essential \
     curl \
     libpq-dev \
     pipx \
