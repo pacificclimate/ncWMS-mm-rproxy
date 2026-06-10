@@ -7,7 +7,10 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-24.04
-
+    timeout-minutes: 15
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.python-version }}
+      cancel-in-progress: true
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
