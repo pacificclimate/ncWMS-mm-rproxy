@@ -2,10 +2,11 @@ import os
 import logging.config
 from time import perf_counter, sleep
 
-from flask import Flask, request, Response
+from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import requests
+from sqlalchemy import text
 
 from ncwms_mm_rproxy.translation import Translation
 
@@ -228,9 +229,23 @@ def create_app(test_config=None):
     def handle_no_translation(e):
         return e.args[0], 404
 
-    @app.route("/health", methods=["GET"])
-    def health():
-        return "OK", 200
+    @app.route("/readyz", methods=["GET"])
+    def readyz():
+        status = {"status": "ok"}
+        http_status = 200
+
+        if request.args.get("verbose", "").lower() in {"1", "true", "yes"}:
+            try:
+                db.session.execute(text("SELECT 1"))
+                status["db"] = "ok"
+            except Exception as exc:
+                status["status"] = "error"
+                status["db"] = str(exc)
+                http_status = 503
+
+        response = jsonify(status)
+        response.cache_control.no_store = True
+        return response, http_status
 
     return app
 
