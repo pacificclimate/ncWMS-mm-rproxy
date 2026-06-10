@@ -7,6 +7,7 @@ RUN apt-get update && \
     apt-get -yq install \
     curl \
     libpq-dev \
+    pipx \
     python3 \
     python3-dev \
     python3-pip \
@@ -16,10 +17,9 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-ENV POETRY_HOME="/opt/poetry"
-ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
-RUN curl -sSL https://install.python-poetry.org | python3
+RUN pipx install poetry
 
 COPY . .
 
@@ -27,6 +27,9 @@ RUN poetry config virtualenvs.in-project true && \
     poetry install
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/readyz || exit 1
 
 RUN groupadd -g 999 user \
     && useradd -r -u 999 -g user user
