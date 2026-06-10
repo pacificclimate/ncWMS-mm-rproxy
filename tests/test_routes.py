@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from sqlalchemy.exc import SQLAlchemyError
 from ncwms_mm_rproxy import create_app
 
 
@@ -27,10 +28,28 @@ def client(app):
 
 
 class TestAppEndpoints:
-    def test_healthz(self, client):
-        response = client.get("/health")
+    def test_readyz(self, client):
+        response = client.get("/readyz")
         assert response.status_code == 200
-        assert response.data == b"OK"
+        assert response.get_json() == {"status": "ok"}
+        assert response.cache_control.no_store is True
+
+    def test_readyz_verbose_checks_db(self, client):
+        response = client.get("/readyz?verbose=true")
+        assert response.status_code == 200
+        assert response.get_json() == {"status": "ok", "db": "ok"}
+
+    @patch("ncwms_mm_rproxy.db.session.execute")
+    def test_readyz_verbose_returns_503_on_db_error(self, mock_execute, client):
+        mock_execute.side_effect = SQLAlchemyError("db unavailable")
+
+        response = client.get("/readyz?verbose=true")
+
+        assert response.status_code == 503
+        assert response.get_json() == {
+            "status": "error",
+            "db": "db unavailable",
+        }
 
     @patch("ncwms_mm_rproxy.requests.get")
     def test_dynamic_success_response(self, mock_get, client):
