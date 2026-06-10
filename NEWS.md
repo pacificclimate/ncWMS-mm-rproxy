@@ -1,5 +1,11 @@
 # News / Release Notes
 
+## 1.2.0
+
+_2026-Jun-10_
+
+- Maintenance updates, readyz for healthcheck endpoint, Customisation of SQLAlchemy pool [#16](https://github.com/pacificclimate/ncWMS-mm-rproxy/pull/16)
+
 ## 1.1.0
 
 _2025-Jul-22_

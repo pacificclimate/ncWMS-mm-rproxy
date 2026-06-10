@@ -253,3 +253,19 @@ workers/instances of this service, given the relatively small memory
 footprint and modest database demand of each cache.
 However, if we wish to do so, we may wish to use [Redis](https://redis.io/)
 for the shared cache service.
+
+
+## Releasing
+
+Creating a versioned release involves:
+
+1. Incrementing `__version__` in `pyproject.toml`
+2. Summarize the changes from the last release in `NEWS.md`
+3. Commit these changes, then tag the release:
+
+  ```bash
+git add pyproject.toml NEWS.md
+git commit -m"Bump to version x.x.x"
+git tag -a -m"x.x.x" x.x.x
+git push --follow-tags
+  ```
